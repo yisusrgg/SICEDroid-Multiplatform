@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.Flow
 interface SicenetRepository {
     suspend fun login(matricula: String, password: String): LoginResponse
     fun clearSession()
+    fun isLoggedIn(): Boolean
 
     // Local Data Flows
     fun getProfileFromDb(): Flow<PerfilAcademico?>

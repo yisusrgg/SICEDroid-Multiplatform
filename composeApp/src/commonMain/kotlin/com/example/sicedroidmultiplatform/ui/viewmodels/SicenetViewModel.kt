@@ -36,6 +36,16 @@ class SicenetViewModel(
     }
     */
 
+    init {
+        checkSession()
+    }
+    private fun checkSession() {
+        if (repository.isLoggedIn()) {
+            // vamos directo a success
+            _loginState.value = LoginUiState.Success()
+        }
+    }
+
     val profileState: StateFlow<PerfilAcademico?> = repository.getProfileFromDb()
         .stateIn(
             scope = viewModelScope,

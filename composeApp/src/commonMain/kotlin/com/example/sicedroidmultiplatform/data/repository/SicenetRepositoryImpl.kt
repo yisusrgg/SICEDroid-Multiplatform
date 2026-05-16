@@ -14,13 +14,14 @@ import com.example.sicedroidmultiplatform.data.local.PerfilEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import com.russhwolf.settings.Settings
 
 class SicenetRepositoryImpl(
     private val service: SicenetService,
     private val sicenetDao: SicenetDao
 ) : SicenetRepository {
 
-    //LECTURA LOCAL ----------------------------------------------------------
+    //LECTURA LOCAL =================================================================
     //Las usa ViewModel
     override fun getProfileFromDb(): Flow<PerfilAcademico?> = sicenetDao.getPerfil().map { entity ->
         entity?.let {
@@ -77,24 +78,22 @@ class SicenetRepositoryImpl(
         }
 
 
-    //PETICIONES DE RED --------------------------------------------------------
+
+    //PETICIONES DE RED ==============================================================
+
     override suspend fun login(matricula: String, password: String): LoginResponse {
         return try {
-            val response = service.login(matricula, password)
-            val result = extractTagValue(response, "accesoLoginResult")
-                ?: return LoginResponse(
-                    success = false,
-                    message = "Tag no encontrado. Respuesta del servidor: ${response.take(300)}"
-                )
-            val acceso = result.contains("\"acceso\":true", ignoreCase = true)
-            LoginResponse(
-                success = acceso,
-                message = if (acceso) "Autenticación exitosa" else "Credenciales incorrectas"
-            )
-        } catch (e: CancellationException) {
-            throw e
+            val responseString = service.login(matricula, password)
+            val result = extractTagValue(responseString, "accesoLoginResult")
+            if (result != null && result.contains("\"acceso\":true", ignoreCase = true)) {
+                sicenetDao.clearAllData()
+                settings.putBoolean("isLoggedIn", true) //guardamos la sesion como activa
+                LoginResponse(true, "Login exitoso")
+            } else {
+                LoginResponse(false, "Credenciales incorrectas")
+            }
         } catch (e: Exception) {
-            LoginResponse(success = false, message = e.message ?: "Error de conexión")
+            LoginResponse(false, e.message ?: "Error de red")
         }
     }
 
@@ -269,7 +268,16 @@ class SicenetRepositoryImpl(
         }
     }
 
+    //CONFIGURACIONES ===================================================
+    private val settings = Settings()
+    override fun isLoggedIn(): Boolean {
+        // Devuelve 'true' si existe la sesión, si no, 'false' por defecto
+        return settings.getBoolean("isLoggedIn", false)
+    }
+
     override fun clearSession() {
+        //Borramos las preferencias al cerar sesion
+        settings.clear()
         // En lugar de SharedPreferences (que no existe en Windows), simplemente limpiamos la BD
         kotlinx.coroutines.MainScope().launch {
             sicenetDao.clearAllData()
