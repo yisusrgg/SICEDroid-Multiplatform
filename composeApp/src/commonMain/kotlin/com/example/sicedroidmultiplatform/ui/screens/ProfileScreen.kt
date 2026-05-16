@@ -43,12 +43,12 @@ fun ProfileScreen(viewModel: SicenetViewModel, onLogout: () -> Unit) {
             InfoRow("Matrícula",           perfil!!.matricula)
             InfoRow("Carrera",             perfil!!.carrera)
             InfoRow("Especialidad",        perfil!!.especialidad)
-            InfoRow("Semestre actual",     perfil!!.semActual)
-            InfoRow("Créditos acumulados", perfil!!.cdtosAcumulados)
-            InfoRow("Créditos actuales",   perfil!!.cdtosActuales)
+            InfoRow("Semestre actual",     perfil!!.semActual.toString())
+            InfoRow("Créditos acumulados", perfil!!.cdtosAcumulados.toString())
+            InfoRow("Créditos actuales",   perfil!!.cdtosActuales.toString())
             InfoRow("Estatus",             perfil!!.estatus)
-            InfoRow("Inscrito",            perfil!!.inscrito)
-            InfoRow("Adeudo",              perfil!!.adeudo)
+            InfoRow("Inscrito",            perfil!!.inscrito.toString())
+            InfoRow("Adeudo",              perfil!!.adeudo.toString())
             InfoRow("Fecha reinscripción", perfil!!.fechaReins)
         }
     }

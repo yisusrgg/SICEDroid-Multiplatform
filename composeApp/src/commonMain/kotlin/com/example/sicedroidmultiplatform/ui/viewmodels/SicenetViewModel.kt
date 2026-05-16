@@ -2,6 +2,7 @@ package com.example.sicedroidmultiplatform.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.sicedroidmultiplatform.data.local.getRoomDatabase
 import com.example.sicedroidmultiplatform.data.model.PerfilAcademico
 import com.example.sicedroidmultiplatform.data.network.SicenetService
 import com.example.sicedroidmultiplatform.data.network.provideHttpClient
@@ -25,8 +26,22 @@ class SicenetViewModel(
     private val _loginState = MutableStateFlow<LoginUiState>(LoginUiState.Idle)
     val loginState: StateFlow<LoginUiState> = _loginState.asStateFlow()
 
-    private val _profileState = MutableStateFlow<PerfilAcademico?>(null)
+
+
+    /*private val _profileState = MutableStateFlow<PerfilAcademico?>(null)
     val profileState: StateFlow<PerfilAcademico?> = _profileState.asStateFlow()
+
+    private suspend fun cargarPerfil() {
+        _profileState.value = repository.getPerfil()
+    }
+    */
+
+    val profileState: StateFlow<PerfilAcademico?> = repository.getProfileFromDb()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
 
     fun login(matricula: String, password: String) {
         viewModelScope.launch(Dispatchers.Default) {
@@ -34,32 +49,46 @@ class SicenetViewModel(
             val result = repository.login(matricula, password)
             if (result.success) {
                 _loginState.value = LoginUiState.Success()
-                cargarPerfil()
+                // 2. Si el login es correcto, arrancamos la sincronización manual
+                sincronizarDatos()
             } else {
                 _loginState.value = LoginUiState.Error(result.message)
             }
         }
     }
 
-    fun resetLoginState() {
-        _loginState.value = LoginUiState.Idle
+    private suspend fun sincronizarDatos() {
+        // Pide el JSON a internet
+        val perfilJson = repository.getUserProfile()
+        if (perfilJson != null) {
+            repository.saveUserPerfilDb(perfilJson)
+        }
+        // Cuando habilites las demás pantallas, descomentas esto:
+        /*
+        val cargaJson = repository.getCargaAcademica()
+        if (cargaJson != null) repository.saveCargaAcademicaDb(cargaJson)
+        // ... etc
+        */
     }
 
-    private suspend fun cargarPerfil() {
-        _profileState.value = repository.getPerfil()
+    fun resetLoginState() {
+        _loginState.value = LoginUiState.Idle
     }
 
     fun logout() {
         repository.clearSession()
         _loginState.value = LoginUiState.Idle
-        _profileState.value = null
     }
 
     companion object {
         fun create(): SicenetViewModel {
             val client = provideHttpClient()
             val service = SicenetService(client)
-            val repository = SicenetRepositoryImpl(service)
+
+            val database = getRoomDatabase()
+            val dao = database.sicenetDao()
+
+            val repository = SicenetRepositoryImpl(service, dao)
             return SicenetViewModel(repository)
         }
     }

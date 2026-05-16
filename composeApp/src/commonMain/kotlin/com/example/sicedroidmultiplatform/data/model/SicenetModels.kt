@@ -7,35 +7,37 @@ data class LoginResponse(
 )
 
 data class PerfilAcademico(
-    val nombre: String = "",
-    val matricula: String = "",
-    val carrera: String = "",
-    val especialidad: String = "",
-    val semActual: String = "",
-    val cdtosAcumulados: String = "",
-    val cdtosActuales: String = "",
-    val estatus: String = "",
-    val inscrito: String = "",
-    val adeudo: String = "",
-    val fechaReins: String = "",
-    val modEducativo: String = "",
-    val urlFoto: String = "",
-    val lineamiento: String = ""
+    val fechaReins: String,
+    val modEducativo: Int,
+    val adeudo: Boolean,
+    val urlFoto: String,
+    val adeudoDescripcion: String,
+    val inscrito: Boolean,
+    val estatus: String,
+    val semActual: Int,
+    val cdtosAcumulados: Int,
+    val cdtosActuales: Int,
+    val especialidad: String,
+    val carrera: String,
+    val lineamiento: Int,
+    val nombre: String,
+    val matricula: String
 )
 
 data class Materia(
-    val clvOficial: String = "",
-    val docente: String = "",
-    val materia: String = "",
-    val grupo: String = "",
-    val creditos: String = "",
-    val estadoMateria: String = "",
-    val lunes: String = "",
-    val martes: String = "",
-    val miercoles: String = "",
-    val jueves: String = "",
-    val viernes: String = "",
-    val sabado: String = ""
+    val docente: String,
+    val clvOficial: String,
+    val estadoMateria: String,
+    val creditosMateria: Int,
+    val materia: String,
+    val grupo: String,
+    // Horario
+    val lunes: String,
+    val martes: String,
+    val miercoles: String,
+    val jueves: String,
+    val viernes: String,
+    val sabado: String
 )
 
 data class CalificacionFinal(

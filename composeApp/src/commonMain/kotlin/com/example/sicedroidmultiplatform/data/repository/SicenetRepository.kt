@@ -5,10 +5,26 @@ import kotlinx.coroutines.flow.Flow
 
 interface SicenetRepository {
     suspend fun login(matricula: String, password: String): LoginResponse
-    suspend fun getPerfil(): PerfilAcademico
-    suspend fun getCargaAcademica(): List<Materia>
-    suspend fun getCardex(lineamiento: String): List<CardexItem>
-    suspend fun getCalificacionesFinales(modEducativo: String): List<CalificacionFinal>
-    suspend fun getCalificacionesUnidad(): List<CalificacionUnidad>
     fun clearSession()
+
+    // Local Data Flows
+    fun getProfileFromDb(): Flow<PerfilAcademico?>
+    fun getCardexFromDb(): Flow<List<CardexItem>>
+    fun getCargaAcademicaFromDb(): Flow<List<Materia>>
+    fun getCalificacionesFinalesFromDb(): Flow<List<CalificacionFinal>>
+    fun getCalificacionesUnidadFromDb(): Flow<List<CalificacionUnidad>>
+
+    // Peticiones a red
+    suspend fun getUserProfile(): String?
+    suspend fun getCardex(lineamiento: Int): String?
+    suspend fun getCalificacionesFinales(modEducativo: Int): String?
+    suspend fun getCalificacionesUnidad(): String?
+    suspend fun getCargaAcademica(): String?
+
+    //Guardar en la base de datos local
+    suspend fun saveUserPerfilDb(jsonString : String)
+    suspend fun saveCardexDb(jsonString : String)
+    suspend fun saveCargaAcademicaDb(jsonString : String)
+    suspend fun saveCalificacionesFinalesDb(jsonString : String)
+    suspend fun saveCalificacionesUnidadDb(jsonString : String)
 }

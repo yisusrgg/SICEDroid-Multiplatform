@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    id("androidx.room") version "2.7.0-alpha06"
 }
 
 kotlin {
@@ -36,6 +37,8 @@ kotlin {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.multiplatform.settings.no.arg)
+            implementation("androidx.room:room-runtime:2.7.0-alpha11")
+            implementation("androidx.sqlite:sqlite-bundled:2.5.0-alpha06")
         }
 
         androidMain.dependencies {
@@ -45,8 +48,8 @@ kotlin {
             implementation(libs.lifecycle.viewmodel.compose)
             implementation(libs.lifecycle.runtime.ktx)
             implementation(libs.ktor.client.okhttp)
-            implementation(libs.androidx.room.runtime)
-            implementation(libs.androidx.room.ktx)
+            //implementation(libs.androidx.room.runtime)
+            //implementation(libs.androidx.room.ktx)
             implementation("androidx.work:work-runtime-ktx:2.11.1")
         }
 
@@ -76,8 +79,28 @@ configurations.configureEach {
     }
 }
 
-dependencies {
+ksp {
+    arg("room.generateKotlin", "true")
+}
+
+room {
+    schemaDirectory("$projectDir/schemas")
+}
+
+/*dependencies {
     add("kspAndroid", libs.androidx.room.compiler)
+    add("kspDesktop", libs.androidx.room.compiler)
+    add("kspCommonMainMetadata", libs.androidx.room.compiler)
+    debugImplementation(compose.uiTooling)
+}*/
+dependencies {
+    val roomVersion = "2.7.0-alpha11"
+    add("kspAndroid", "androidx.room:room-compiler:$roomVersion")
+    add("kspDesktop", "androidx.room:room-compiler:$roomVersion")
+
+    // IMPORTANTE: Para KMP, Room prefiere procesar sobre CommonMain
+    add("kspCommonMainMetadata", "androidx.room:room-compiler:$roomVersion")
+
     debugImplementation(compose.uiTooling)
 }
 
