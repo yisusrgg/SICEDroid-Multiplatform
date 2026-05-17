@@ -7,6 +7,8 @@ interface SicenetRepository {
     suspend fun login(matricula: String, password: String): LoginResponse
     fun clearSession()
     fun isLoggedIn(): Boolean
+    fun saveCredentials(matricula: String, password: String)
+    fun getStoredCredentials(): Pair<String, String>?
 
     // Local Data Flows
     fun getProfileFromDb(): Flow<PerfilAcademico?>

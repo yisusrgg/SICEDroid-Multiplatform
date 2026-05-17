@@ -58,8 +58,12 @@ class SicenetRepositoryImpl(
     override fun getCardexFromDb(): Flow<List<CardexItem>> =
         sicenetDao.getCardex().map { list ->
             list.map {
-                CardexItem(it.materia, it.calificacion,
-                    it.semestre, it.creditos,it.estatus
+                CardexItem(
+                    semestre    = it.semestre,
+                    materia     = it.materia,
+                    creditos    = it.creditos,
+                    calificacion = it.calificacion,
+                    acreditada  = it.estatus
                 )
             }
         }
@@ -87,14 +91,28 @@ class SicenetRepositoryImpl(
             val result = extractTagValue(responseString, "accesoLoginResult")
             if (result != null && result.contains("\"acceso\":true", ignoreCase = true)) {
                 sicenetDao.clearAllData()
-                settings.putBoolean("isLoggedIn", true) //guardamos la sesion como activa
-                LoginResponse(true, "Login exitoso")
+                settings.putBoolean("isLoggedIn", true)
+                saveCredentials(matricula, password)
+                LoginResponse(success = true, message = "Login exitoso")
             } else {
-                LoginResponse(false, "Credenciales incorrectas")
+                LoginResponse(success = false, message = "Credenciales incorrectas")
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            LoginResponse(false, e.message ?: "Error de red")
+            LoginResponse(success = false, message = e.message?.takeIf { it.isNotBlank() } ?: "Error de red")
         }
+    }
+
+    override fun saveCredentials(matricula: String, password: String) {
+        settings.putString("cred_mat", matricula)
+        settings.putString("cred_pwd", password)
+    }
+
+    override fun getStoredCredentials(): Pair<String, String>? {
+        val mat = settings.getStringOrNull("cred_mat") ?: return null
+        val pwd = settings.getStringOrNull("cred_pwd") ?: return null
+        return if (mat.isNotBlank() && pwd.isNotBlank()) mat to pwd else null
     }
 
     override suspend fun getUserProfile(): String? {
@@ -245,16 +263,34 @@ class SicenetRepositoryImpl(
             val jsonArray = Json.parseToJsonElement(jsonString).jsonArray
             val entities = jsonArray.map { element ->
                 val obj = element.jsonObject
-                val unidadesActivas = obj["UnidadesActivas"]?.jsonPrimitive?.intOrNull ?: 0
-                val unidades = mutableListOf<String>()
-                for (u in 1..unidadesActivas) {
-                    val cal = obj["C$u"]?.jsonPrimitive?.contentOrNull
-                    unidades.add(if (cal == "null" || cal.isNullOrEmpty()) "0" else cal)
+
+                // "UnidadesActivas" en SICENET es una cadena de "1"s: su LONGITUD es el
+                // número real de unidades de esa materia ("111" → 3 unidades).
+                // SICENET siempre envía C1..C13 para todas las materias, así que usar la
+                // longitud de esta cadena es la única forma fiable de saber el límite real.
+                val numUnidades = obj["UnidadesActivas"]?.jsonPrimitive?.contentOrNull?.length ?: 0
+                val limite = if (numUnidades > 0) numUnidades else 20
+
+                val raw = mutableListOf<String>()
+                for (u in 1..limite) {
+                    val calEntry = obj["C$u"] ?: break
+                    val cal = calEntry.jsonPrimitive.contentOrNull
+                    // null / "null" / "0" / vacío → sin calificar
+                    raw.add(if (cal == null || cal == "null" || cal.isEmpty() || cal == "0") "—" else cal)
                 }
-                val validGrades = unidades.mapNotNull { it.toIntOrNull() }
-                val promedio = if (validGrades.isNotEmpty()) {
-                    validGrades.average().toInt().toString()
-                } else "0"
+
+                // Si UnidadesActivas no estaba disponible, eliminamos los "—" de cola para
+                // no guardar campos de relleno que SICENET envía más allá de las unidades reales.
+                val unidades: List<String> = if (numUnidades > 0) {
+                    raw
+                } else {
+                    val last = raw.indexOfLast { it != "—" }
+                    if (last >= 0) raw.take(last + 1) else raw
+                }
+
+                // Promedio solo con calificaciones numéricas reales (excluye "—")
+                val grades = unidades.mapNotNull { g -> g.toIntOrNull()?.takeIf { it > 0 } }
+                val promedio = if (grades.isNotEmpty()) grades.average().toInt().toString() else "—"
                 CalificacionUnidadEntity(
                     materia = obj["Materia"]?.jsonPrimitive?.contentOrNull ?: "",
                     unidades = unidades,
@@ -263,7 +299,7 @@ class SicenetRepositoryImpl(
             }
             sicenetDao.deleteCalificacionesUnidades()
             sicenetDao.insertCalificacionesUnidades(entities)
-        }catch (e: Exception) {
+        } catch (e: Exception) {
             println("Error guardando Calificaciones por Unidad: ${e.message}")
         }
     }

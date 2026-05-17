@@ -1,16 +1,19 @@
+
 package com.example.sicedroidmultiplatform.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.sicedroidmultiplatform.data.local.getRoomDatabase
-import com.example.sicedroidmultiplatform.data.model.PerfilAcademico
+import com.example.sicedroidmultiplatform.data.model.*
 import com.example.sicedroidmultiplatform.data.network.SicenetService
 import com.example.sicedroidmultiplatform.data.network.provideHttpClient
 import com.example.sicedroidmultiplatform.data.repository.SicenetRepository
 import com.example.sicedroidmultiplatform.data.repository.SicenetRepositoryImpl
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.*
 
 sealed class LoginUiState {
     data object Idle : LoginUiState()
@@ -26,32 +29,42 @@ class SicenetViewModel(
     private val _loginState = MutableStateFlow<LoginUiState>(LoginUiState.Idle)
     val loginState: StateFlow<LoginUiState> = _loginState.asStateFlow()
 
+    val profileState: StateFlow<PerfilAcademico?> = repository.getProfileFromDb()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    val cardexState: StateFlow<List<CardexItem>> = repository.getCardexFromDb()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    /*private val _profileState = MutableStateFlow<PerfilAcademico?>(null)
-    val profileState: StateFlow<PerfilAcademico?> = _profileState.asStateFlow()
+    val cargaState: StateFlow<List<Materia>> = repository.getCargaAcademicaFromDb()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private suspend fun cargarPerfil() {
-        _profileState.value = repository.getPerfil()
-    }
-    */
+    val califFinalesState: StateFlow<List<CalificacionFinal>> = repository.getCalificacionesFinalesFromDb()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val califUnidadState: StateFlow<List<CalificacionUnidad>> = repository.getCalificacionesUnidadFromDb()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
         checkSession()
     }
+
     private fun checkSession() {
         if (repository.isLoggedIn()) {
-            // vamos directo a success
             _loginState.value = LoginUiState.Success()
+            // Re-login silencioso en background para refrescar datos con credenciales guardadas.
+            // Las cookies Ktor son en memoria: se pierden al reiniciar la app, así que hay que
+            // volver a hacer login para establecer la sesión antes de llamar a la API.
+            val creds = repository.getStoredCredentials()
+            if (creds != null) {
+                viewModelScope.launch(Dispatchers.Default) {
+                    try {
+                        val result = repository.login(creds.first, creds.second)
+                        if (result.success) sincronizarDatos()
+                    } catch (_: Exception) { /* fallo silencioso — datos del DB siguen visibles */ }
+                }
+            }
         }
     }
-
-    val profileState: StateFlow<PerfilAcademico?> = repository.getProfileFromDb()
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = null
-        )
 
     fun login(matricula: String, password: String) {
         viewModelScope.launch(Dispatchers.Default) {
@@ -59,7 +72,6 @@ class SicenetViewModel(
             val result = repository.login(matricula, password)
             if (result.success) {
                 _loginState.value = LoginUiState.Success()
-                // 2. Si el login es correcto, arrancamos la sincronización manual
                 sincronizarDatos()
             } else {
                 _loginState.value = LoginUiState.Error(result.message)
@@ -68,17 +80,33 @@ class SicenetViewModel(
     }
 
     private suspend fun sincronizarDatos() {
-        // Pide el JSON a internet
-        val perfilJson = repository.getUserProfile()
-        if (perfilJson != null) {
-            repository.saveUserPerfilDb(perfilJson)
+        val perfilJson = repository.getUserProfile() ?: return
+        repository.saveUserPerfilDb(perfilJson)
+
+        // Extraemos lineamiento y modEducativo del perfil para las demás peticiones
+        val json = Json.parseToJsonElement(perfilJson).jsonObject
+        val lineamiento  = json["lineamiento"]?.jsonPrimitive?.intOrNull  ?: 0
+        val modEducativo = json["modEducativo"]?.jsonPrimitive?.intOrNull ?: 0
+
+        // Sincronizamos el resto en paralelo
+        coroutineScope {
+            launch {
+                val j = repository.getCargaAcademica()
+                if (j != null) repository.saveCargaAcademicaDb(j)
+            }
+            launch {
+                val j = repository.getCardex(lineamiento)
+                if (j != null) repository.saveCardexDb(j)
+            }
+            launch {
+                val j = repository.getCalificacionesFinales(modEducativo)
+                if (j != null) repository.saveCalificacionesFinalesDb(j)
+            }
+            launch {
+                val j = repository.getCalificacionesUnidad()
+                if (j != null) repository.saveCalificacionesUnidadDb(j)
+            }
         }
-        // Cuando habilites las demás pantallas, descomentas esto:
-        /*
-        val cargaJson = repository.getCargaAcademica()
-        if (cargaJson != null) repository.saveCargaAcademicaDb(cargaJson)
-        // ... etc
-        */
     }
 
     fun resetLoginState() {
@@ -92,12 +120,10 @@ class SicenetViewModel(
 
     companion object {
         fun create(): SicenetViewModel {
-            val client = provideHttpClient()
-            val service = SicenetService(client)
-
-            val database = getRoomDatabase()
-            val dao = database.sicenetDao()
-
+            val client     = provideHttpClient()
+            val service    = SicenetService(client)
+            val database   = getRoomDatabase()
+            val dao        = database.sicenetDao()
             val repository = SicenetRepositoryImpl(service, dao)
             return SicenetViewModel(repository)
         }

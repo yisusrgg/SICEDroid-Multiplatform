@@ -1,15 +1,15 @@
 package com.example.sicedroidmultiplatform
 
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import com.example.sicedroidmultiplatform.ui.screens.HomeScreen
 import com.example.sicedroidmultiplatform.ui.screens.LoginScreen
+import com.example.sicedroidmultiplatform.ui.theme.SicenetTheme
 import com.example.sicedroidmultiplatform.ui.viewmodels.LoginUiState
 import com.example.sicedroidmultiplatform.ui.viewmodels.SicenetViewModel
 
 @Composable
 fun App(viewModel: SicenetViewModel) {
-    MaterialTheme {
+    SicenetTheme {
         var showHome by remember { mutableStateOf(false) }
         val loginState by viewModel.loginState.collectAsState()
 

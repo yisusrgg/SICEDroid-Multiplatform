@@ -1,14 +1,24 @@
 package com.example.sicedroidmultiplatform.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.sicedroidmultiplatform.ui.theme.SicenetGreen
+import com.example.sicedroidmultiplatform.ui.theme.SicenetGreenDark
+import com.example.sicedroidmultiplatform.ui.theme.SicenetGreenDarker
 import com.example.sicedroidmultiplatform.ui.viewmodels.LoginUiState
 import com.example.sicedroidmultiplatform.ui.viewmodels.SicenetViewModel
 
@@ -17,44 +27,63 @@ fun LoginScreen(
     viewModel: SicenetViewModel,
     onLoginSuccess: () -> Unit
 ) {
-    var matricula by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    var matricula  by remember { mutableStateOf("") }
+    var password   by remember { mutableStateOf("") }
     val loginState by viewModel.loginState.collectAsState()
+    val isLoading  = loginState is LoginUiState.Loading
 
     LaunchedEffect(loginState) {
-        if (loginState is LoginUiState.Success) {
-            onLoginSuccess()
-        }
+        if (loginState is LoginUiState.Success) onLoginSuccess()
     }
 
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(SicenetGreenDarker, SicenetGreenDark, SicenetGreen)
+                )
+            ),
         contentAlignment = Alignment.Center
     ) {
         Card(
             modifier = Modifier
-                .fillMaxWidth(fraction = 0.9f)
+                .fillMaxWidth(fraction = 0.88f)
                 .wrapContentHeight(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            shape = RoundedCornerShape(20.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
             Column(
                 modifier = Modifier
-                    .padding(24.dp)
+                    .padding(28.dp)
                     .fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                Text(
-                    text = "SICENET",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                // Branding
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "SICENET",
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = SicenetGreenDark,
+                        letterSpacing = 4.sp
+                    )
+                    Text(
+                        text = "Sistema de Control Escolar",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
 
-                Text(
-                    text = "Iniciar sesión",
-                    style = MaterialTheme.typography.titleMedium
-                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
 
+                // Campos
                 OutlinedTextField(
                     value = matricula,
                     onValueChange = { matricula = it },
@@ -62,7 +91,8 @@ fun LoginScreen(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    enabled = loginState !is LoginUiState.Loading
+                    enabled = !isLoading,
+                    shape = RoundedCornerShape(12.dp),
                 )
 
                 OutlinedTextField(
@@ -73,34 +103,43 @@ fun LoginScreen(
                     modifier = Modifier.fillMaxWidth(),
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    enabled = loginState !is LoginUiState.Loading
+                    enabled = !isLoading,
+                    shape = RoundedCornerShape(12.dp),
                 )
 
                 Button(
                     onClick = { viewModel.login(matricula, password) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    enabled = matricula.isNotBlank() && password.isNotBlank() &&
-                            loginState !is LoginUiState.Loading
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    enabled = matricula.isNotBlank() && password.isNotBlank() && !isLoading,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = SicenetGreenDark)
                 ) {
-                    if (loginState is LoginUiState.Loading) {
+                    if (isLoading) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(24.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
+                            color = Color.White,
                             strokeWidth = 2.dp
                         )
                     } else {
-                        Text("Iniciar sesión")
+                        Text("Iniciar sesión", fontWeight = FontWeight.SemiBold)
                     }
                 }
 
                 if (loginState is LoginUiState.Error) {
-                    Text(
-                        text = (loginState as LoginUiState.Error).message,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = (loginState as LoginUiState.Error).message,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             }
         }
