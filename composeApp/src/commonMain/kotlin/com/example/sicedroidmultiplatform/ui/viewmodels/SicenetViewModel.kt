@@ -9,6 +9,7 @@ import com.example.sicedroidmultiplatform.data.network.SicenetService
 import com.example.sicedroidmultiplatform.data.network.provideHttpClient
 import com.example.sicedroidmultiplatform.data.repository.SicenetRepository
 import com.example.sicedroidmultiplatform.data.repository.SicenetRepositoryImpl
+import com.example.sicedroidmultiplatform.workers.SyncManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.*
@@ -44,6 +45,8 @@ class SicenetViewModel(
     val califUnidadState: StateFlow<List<CalificacionUnidad>> = repository.getCalificacionesUnidadFromDb()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+
+    private val syncManager = SyncManager(repository)
     init {
         checkSession()
     }
@@ -80,33 +83,18 @@ class SicenetViewModel(
     }
 
     private suspend fun sincronizarDatos() {
-        val perfilJson = repository.getUserProfile() ?: return
-        repository.saveUserPerfilDb(perfilJson)
+        //worker guarda el perfil en la base de datos
+        syncManager.sincronizarDato("PERFIL")
 
-        // Extraemos lineamiento y modEducativo del perfil para las demás peticiones
+        val perfilJson = repository.getUserProfile() ?: return
         val json = Json.parseToJsonElement(perfilJson).jsonObject
         val lineamiento  = json["lineamiento"]?.jsonPrimitive?.intOrNull  ?: 0
         val modEducativo = json["modEducativo"]?.jsonPrimitive?.intOrNull ?: 0
 
-        // Sincronizamos el resto en paralelo
-        coroutineScope {
-            launch {
-                val j = repository.getCargaAcademica()
-                if (j != null) repository.saveCargaAcademicaDb(j)
-            }
-            launch {
-                val j = repository.getCardex(lineamiento)
-                if (j != null) repository.saveCardexDb(j)
-            }
-            launch {
-                val j = repository.getCalificacionesFinales(modEducativo)
-                if (j != null) repository.saveCalificacionesFinalesDb(j)
-            }
-            launch {
-                val j = repository.getCalificacionesUnidad()
-                if (j != null) repository.saveCalificacionesUnidadDb(j)
-            }
-        }
+        syncManager.sincronizarDato("CARGA_ACADEMICA")
+        syncManager.sincronizarDato("CARDEX", lineamiento = lineamiento)
+        syncManager.sincronizarDato("CALIF_FINAL", modEducativo = modEducativo)
+        syncManager.sincronizarDato("CALIF_UNIDAD")
     }
 
     fun resetLoginState() {
