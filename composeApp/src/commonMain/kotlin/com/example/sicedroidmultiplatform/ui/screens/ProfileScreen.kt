@@ -20,7 +20,8 @@ import com.example.sicedroidmultiplatform.ui.viewmodels.SicenetViewModel
 
 @Composable
 fun ProfileScreen(viewModel: SicenetViewModel) {
-    val perfil by viewModel.profileState.collectAsState()
+    val perfil   by viewModel.profileState.collectAsState()
+    val isOnline by viewModel.isOnline.collectAsState()
 
     Column(
         modifier = Modifier
@@ -37,16 +38,29 @@ fun ProfileScreen(viewModel: SicenetViewModel) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    CircularProgressIndicator()
-                    Text(
-                        "Cargando perfil...",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    if (isOnline) {
+                        CircularProgressIndicator()
+                        Text(
+                            "Cargando perfil...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        Text(
+                            "Sin datos disponibles",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            "Verifica tu conexión e inicia sesión de nuevo",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         } else {
-            // Header con avatar
+            // Header azul con avatar
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

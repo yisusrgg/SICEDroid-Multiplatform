@@ -34,7 +34,8 @@ private fun tieneClase(horario: String) =
 
 @Composable
 fun CargaAcademicaScreen(viewModel: SicenetViewModel) {
-    val materias   by viewModel.cargaState.collectAsState()
+    val materias    by viewModel.cargaState.collectAsState()
+    val isOnline    by viewModel.isOnline.collectAsState()
     var selectedDay by remember { mutableStateOf(0) }
 
     Column(
@@ -42,7 +43,7 @@ fun CargaAcademicaScreen(viewModel: SicenetViewModel) {
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // Tabs de días
+        // Tabs de días — fondo azul primario
         ScrollableTabRow(
             selectedTabIndex = selectedDay,
             containerColor   = MaterialTheme.colorScheme.primary,
@@ -72,8 +73,12 @@ fun CargaAcademicaScreen(viewModel: SicenetViewModel) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    CircularProgressIndicator()
-                    Text("Cargando horario...", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (isOnline) {
+                        CircularProgressIndicator()
+                        Text("Cargando horario...", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else {
+                        Text("Sin datos disponibles", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
         } else {
@@ -154,7 +159,6 @@ private fun MateriaCard(materia: Materia, horario: String) {
                 }
             }
 
-            // Datos de la materia
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp)

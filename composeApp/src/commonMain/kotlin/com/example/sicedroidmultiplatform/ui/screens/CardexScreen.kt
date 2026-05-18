@@ -33,7 +33,8 @@ private fun gradeColors(grade: String): GradeColors {
 
 @Composable
 fun CardexScreen(viewModel: SicenetViewModel) {
-    val cardex by viewModel.cardexState.collectAsState()
+    val cardex   by viewModel.cardexState.collectAsState()
+    val isOnline by viewModel.isOnline.collectAsState()
 
     Column(
         modifier = Modifier
@@ -46,8 +47,12 @@ fun CardexScreen(viewModel: SicenetViewModel) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    CircularProgressIndicator()
-                    Text("Cargando kárdex...", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (isOnline) {
+                        CircularProgressIndicator()
+                        Text("Cargando kárdex...", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else {
+                        Text("Sin datos disponibles", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
         } else {
@@ -82,7 +87,6 @@ private fun CardexCard(item: CardexItem) {
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Círculo con calificación
             Box(
                 modifier = Modifier
                     .size(56.dp)
@@ -98,7 +102,6 @@ private fun CardexCard(item: CardexItem) {
                 )
             }
 
-            // Datos
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(6.dp)

@@ -45,4 +45,7 @@ actual class SyncManager actual constructor(
             }
         }
     }
+
+    actual fun getFechaActualizacion(tipoSync: String): String =
+        settings.getString("FECHA_ACT_$tipoSync", "")
 }

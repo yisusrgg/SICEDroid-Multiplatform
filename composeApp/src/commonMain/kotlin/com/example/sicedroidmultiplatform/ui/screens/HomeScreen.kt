@@ -1,7 +1,7 @@
 package com.example.sicedroidmultiplatform.ui.screens
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -34,8 +34,9 @@ private val tabItems = listOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(viewModel: SicenetViewModel, onLogout: () -> Unit) {
-    var currentTab by remember { mutableStateOf(HomeTab.PERFIL) }
-    val currentTitle = tabItems.first { it.tab == currentTab }.title
+    var currentTab   by remember { mutableStateOf(HomeTab.PERFIL) }
+    val currentTitle  = tabItems.first { it.tab == currentTab }.title
+    val isOnline     by viewModel.isOnline.collectAsState()
 
     Scaffold(
         topBar = {
@@ -74,13 +75,45 @@ fun HomeScreen(viewModel: SicenetViewModel, onLogout: () -> Unit) {
             }
         }
     ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding)) {
-            when (currentTab) {
-                HomeTab.PERFIL  -> ProfileScreen(viewModel = viewModel)
-                HomeTab.CARGA   -> CargaAcademicaScreen(viewModel = viewModel)
-                HomeTab.CARDEX  -> CardexScreen(viewModel = viewModel)
-                HomeTab.UNIDAD  -> CalificacionesUnidadScreen(viewModel = viewModel)
-                HomeTab.FINAL   -> CalificacionFinalScreen(viewModel = viewModel)
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+        ) {
+            // Banner de última actualización — aparece justo debajo del título, solo sin internet
+            if (!isOnline) {
+                val tipo = when (currentTab) {
+                    HomeTab.PERFIL -> "PERFIL"
+                    HomeTab.CARGA  -> "CARGA_ACADEMICA"
+                    HomeTab.CARDEX -> "CARDEX"
+                    HomeTab.UNIDAD -> "CALIF_UNIDAD"
+                    HomeTab.FINAL  -> "CALIF_FINAL"
+                }
+                val fecha = viewModel.getFechaActualizacion(tipo)
+                if (fecha.isNotEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.primary)
+                            .padding(horizontal = 16.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            "Última actualización: $fecha",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White.copy(alpha = 0.85f)
+                        )
+                    }
+                }
+            }
+
+            Box(modifier = Modifier.weight(1f)) {
+                when (currentTab) {
+                    HomeTab.PERFIL  -> ProfileScreen(viewModel = viewModel)
+                    HomeTab.CARGA   -> CargaAcademicaScreen(viewModel = viewModel)
+                    HomeTab.CARDEX  -> CardexScreen(viewModel = viewModel)
+                    HomeTab.UNIDAD  -> CalificacionesUnidadScreen(viewModel = viewModel)
+                    HomeTab.FINAL   -> CalificacionFinalScreen(viewModel = viewModel)
+                }
             }
         }
     }

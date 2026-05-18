@@ -3,11 +3,13 @@ package com.example.sicedroidmultiplatform.workers
 import androidx.work.*
 import com.example.sicedroidmultiplatform.data.local.appContext
 import com.example.sicedroidmultiplatform.data.repository.SicenetRepository
+import com.russhwolf.settings.Settings
 
 actual class SyncManager actual constructor(
     private val repository: SicenetRepository
 ) {
     private val workManager = WorkManager.getInstance(appContext)
+    private val settings = Settings()
 
     actual fun sincronizarDato(tipoSync: String, lineamiento: Int, modEducativo: Int) {
         val input = workDataOf(
@@ -32,4 +34,7 @@ actual class SyncManager actual constructor(
             request
         )
     }
+
+    actual fun getFechaActualizacion(tipoSync: String): String =
+        settings.getString("FECHA_ACT_$tipoSync", "")
 }

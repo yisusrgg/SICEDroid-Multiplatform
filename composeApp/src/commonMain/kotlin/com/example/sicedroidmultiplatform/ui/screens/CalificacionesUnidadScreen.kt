@@ -28,7 +28,8 @@ import com.example.sicedroidmultiplatform.ui.viewmodels.SicenetViewModel
 
 @Composable
 fun CalificacionesUnidadScreen(viewModel: SicenetViewModel) {
-    val califs by viewModel.califUnidadState.collectAsState()
+    val califs   by viewModel.califUnidadState.collectAsState()
+    val isOnline by viewModel.isOnline.collectAsState()
 
     Column(
         modifier = Modifier
@@ -41,8 +42,12 @@ fun CalificacionesUnidadScreen(viewModel: SicenetViewModel) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    CircularProgressIndicator()
-                    Text("Cargando calificaciones...", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (isOnline) {
+                        CircularProgressIndicator()
+                        Text("Cargando calificaciones...", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else {
+                        Text("Sin datos disponibles", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
         } else {
@@ -67,8 +72,6 @@ fun CalificacionesUnidadScreen(viewModel: SicenetViewModel) {
 private fun UnidadCard(item: CalificacionUnidad) {
     var expanded by remember { mutableStateOf(false) }
 
-    // Mostramos todas las unidades tal como las reporta SICENET,
-    // incluyendo las que aún no tienen calificación (se muestran como "—").
     val displayUnidades = item.unidades
 
     val promedioValue = item.promedio.toFloatOrNull() ?: -1f
@@ -86,7 +89,6 @@ private fun UnidadCard(item: CalificacionUnidad) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column {
-            // Cabecera — siempre visible, clickeable
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -125,7 +127,6 @@ private fun UnidadCard(item: CalificacionUnidad) {
                 )
             }
 
-            // Contenido expandible — dentro de Column normal, AnimatedVisibility no choca
             AnimatedVisibility(
                 visible = expanded,
                 enter = expandVertically(),

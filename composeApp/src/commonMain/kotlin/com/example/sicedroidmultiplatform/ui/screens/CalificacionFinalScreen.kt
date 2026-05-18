@@ -21,7 +21,8 @@ import com.example.sicedroidmultiplatform.ui.viewmodels.SicenetViewModel
 
 @Composable
 fun CalificacionFinalScreen(viewModel: SicenetViewModel) {
-    val califs by viewModel.califFinalesState.collectAsState()
+    val califs   by viewModel.califFinalesState.collectAsState()
+    val isOnline by viewModel.isOnline.collectAsState()
 
     Column(
         modifier = Modifier
@@ -34,8 +35,12 @@ fun CalificacionFinalScreen(viewModel: SicenetViewModel) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    CircularProgressIndicator()
-                    Text("Cargando calificaciones...", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (isOnline) {
+                        CircularProgressIndicator()
+                        Text("Cargando calificaciones...", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else {
+                        Text("Sin datos disponibles", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
         } else {
@@ -76,7 +81,6 @@ private fun CalificacionFinalCard(item: CalificacionFinal) {
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Círculo con calificación
             Box(
                 modifier = Modifier
                     .size(52.dp)

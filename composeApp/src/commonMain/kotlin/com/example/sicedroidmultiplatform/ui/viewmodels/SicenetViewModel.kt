@@ -1,4 +1,3 @@
-
 package com.example.sicedroidmultiplatform.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
@@ -11,7 +10,6 @@ import com.example.sicedroidmultiplatform.data.repository.SicenetRepository
 import com.example.sicedroidmultiplatform.data.repository.SicenetRepositoryImpl
 import com.example.sicedroidmultiplatform.workers.SyncManager
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.*
@@ -30,6 +28,10 @@ class SicenetViewModel(
     private val _loginState = MutableStateFlow<LoginUiState>(LoginUiState.Idle)
     val loginState: StateFlow<LoginUiState> = _loginState.asStateFlow()
 
+    // true = última operación de red tuvo éxito; false = sin internet
+    private val _isOnline = MutableStateFlow(true)
+    val isOnline: StateFlow<Boolean> = _isOnline.asStateFlow()
+
     val profileState: StateFlow<PerfilAcademico?> = repository.getProfileFromDb()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
@@ -45,8 +47,10 @@ class SicenetViewModel(
     val califUnidadState: StateFlow<List<CalificacionUnidad>> = repository.getCalificacionesUnidadFromDb()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-
     private val syncManager = SyncManager(repository)
+
+    fun getFechaActualizacion(tipo: String): String = syncManager.getFechaActualizacion(tipo)
+
     init {
         checkSession()
     }
@@ -54,16 +58,16 @@ class SicenetViewModel(
     private fun checkSession() {
         if (repository.isLoggedIn()) {
             _loginState.value = LoginUiState.Success()
-            // Re-login silencioso en background para refrescar datos con credenciales guardadas.
-            // Las cookies Ktor son en memoria: se pierden al reiniciar la app, así que hay que
-            // volver a hacer login para establecer la sesión antes de llamar a la API.
             val creds = repository.getStoredCredentials()
             if (creds != null) {
                 viewModelScope.launch(Dispatchers.Default) {
                     try {
                         val result = repository.login(creds.first, creds.second)
+                        _isOnline.value = result.success
                         if (result.success) sincronizarDatos()
-                    } catch (_: Exception) { /* fallo silencioso — datos del DB siguen visibles */ }
+                    } catch (_: Exception) {
+                        _isOnline.value = false
+                    }
                 }
             }
         }
@@ -73,6 +77,7 @@ class SicenetViewModel(
         viewModelScope.launch(Dispatchers.Default) {
             _loginState.value = LoginUiState.Loading
             val result = repository.login(matricula, password)
+            _isOnline.value = result.success
             if (result.success) {
                 _loginState.value = LoginUiState.Success()
                 sincronizarDatos()
@@ -83,16 +88,28 @@ class SicenetViewModel(
     }
 
     private suspend fun sincronizarDatos() {
-        //worker guarda el perfil en la base de datos
+        // Leer lineamiento/modEducativo de la BD (rápido, sin red).
+        // Solo si la BD está vacía (primer inicio) se hace una llamada de red puntual.
+        val perfilDb = repository.getProfileFromDb().first()
+
+        val lineamiento: Int
+        val modEducativo: Int
+
+        if (perfilDb != null) {
+            lineamiento  = perfilDb.lineamiento
+            modEducativo = perfilDb.modEducativo
+        } else {
+            // Primer inicio: BD vacía — obtener perfil de la red y guardarlo de inmediato
+            val perfilJson = repository.getUserProfile() ?: return
+            val json = Json.parseToJsonElement(perfilJson).jsonObject
+            lineamiento  = json["lineamiento"]?.jsonPrimitive?.intOrNull  ?: 0
+            modEducativo = json["modEducativo"]?.jsonPrimitive?.intOrNull ?: 0
+            repository.saveUserPerfilDb(perfilJson)
+        }
+
         syncManager.sincronizarDato("PERFIL")
-
-        val perfilJson = repository.getUserProfile() ?: return
-        val json = Json.parseToJsonElement(perfilJson).jsonObject
-        val lineamiento  = json["lineamiento"]?.jsonPrimitive?.intOrNull  ?: 0
-        val modEducativo = json["modEducativo"]?.jsonPrimitive?.intOrNull ?: 0
-
         syncManager.sincronizarDato("CARGA_ACADEMICA")
-        syncManager.sincronizarDato("CARDEX", lineamiento = lineamiento)
+        syncManager.sincronizarDato("CARDEX",      lineamiento  = lineamiento)
         syncManager.sincronizarDato("CALIF_FINAL", modEducativo = modEducativo)
         syncManager.sincronizarDato("CALIF_UNIDAD")
     }
