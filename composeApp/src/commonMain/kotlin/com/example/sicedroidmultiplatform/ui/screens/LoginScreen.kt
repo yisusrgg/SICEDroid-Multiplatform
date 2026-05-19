@@ -90,7 +90,7 @@ fun LoginScreen(
                     label = { Text("Matrícula") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                     enabled = !isLoading,
                     shape = RoundedCornerShape(12.dp),
                 )
